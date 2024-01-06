@@ -32,26 +32,49 @@ class ReadStream(Stream):
     def read(self, *args) -> bytes:
         return self.stream.read(*args)
     
-    def read_u8(self) -> int:
-        return struct.unpack("<B", self.read(1))[0]
+    def read_u8(self, end="<") -> int:
+        return struct.unpack(f"{end}B", self.read(1))[0]
     
-    def read_u16(self) -> int:
-        return struct.unpack("<H", self.read(2))[0]
+    def read_u16(self, end="<") -> int:
+        return struct.unpack(f"{end}H", self.read(2))[0]
     
-    def read_s16(self) -> int:
-        return struct.unpack("<h", self.read(2))[0]
+    def read_s16(self, end="<") -> int:
+        return struct.unpack(f"{end}h", self.read(2))[0]
     
-    def read_u32(self) -> int:
-        return struct.unpack("<I", self.read(4))[0]
+    def read_u24(self, end="<") -> int:
+        if end == "<":
+            return struct.unpack(f"{end}I", self.read(3) + b'\x00')[0]
+        else:
+            return struct.unpack(f"{end}I", b'\x00' + self.read(3))[0]
+        
+    def read_s24(self, end="<") -> int:
+        if end == "<":
+            return struct.unpack(f"{end}i", self.read(3) + b'\x00')[0]
+        else:
+            return struct.unpack(f"{end}i", b'\x00' + self.read(3))[0]
     
-    def read_s32(self) -> int:
-        return struct.unpack("<i", self.read(4))[0]
+    def read_u32(self, end="<") -> int:
+        return struct.unpack(f"{end}I", self.read(4))[0]
     
-    def read_u64(self) -> int:
-        return struct.unpack("<Q", self.read(8))[0]
+    def read_s32(self, end="<") -> int:
+        return struct.unpack(f"{end}i", self.read(4))[0]
     
-    def read_f32(self) -> float:
-        return struct.unpack("<f", self.read(4))[0]
+    def read_u64(self, end="<") -> int:
+        return struct.unpack(f"{end}Q", self.read(8))[0]
+    
+    def read_s64(self, end="<") -> int:
+        return struct.unpack(f"{end}q", self.read(8))[0]
+    
+    def read_ptr(self, align=8, end="<") -> int:
+        while self.stream.tell() % align != 0:
+            self.read(1)
+        return struct.unpack(f"{end}Q", self.read(8))[0]
+    
+    def read_f32(self, end="<") -> float:
+        return struct.unpack(f"{end}f", self.read(4))[0]
+    
+    def read_f64(self, end="<") -> float:
+        return struct.unpack(f"{end}d", self.read(4))[0]
 
     def read_string(self, offset=None, size=4): # Data should be a slice beginning at the string pool
         pos = self.stream.tell()
@@ -67,6 +90,14 @@ class ReadStream(Stream):
         string = get_string(self.stream, ptr)
         self.stream.seek(pos)
         return string
+
+    def read_string_sarc(self):
+        string = b''
+        current_char = self.stream.read(1)
+        while current_char != b'\x00':
+            string += current_char
+            current_char = self.stream.read(1)
+        return string.decode('utf-8')
     
 class PlaceholderWriter:
     __slots__ = ["_offset"]

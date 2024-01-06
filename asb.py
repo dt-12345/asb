@@ -1,6 +1,7 @@
 from exb import EXB
 from utils import *
 from enum import Enum
+import zstd
 import json
 import os
 import mmh3
@@ -268,7 +269,6 @@ class ASB:
         if flags < 0:
             index = flags & 0xFFFF
             flag = (flags & 0xFFFF0000) >> 16
-            # this part doesn't seem right bc I still get no actual instances
             if (flags ^ 0xFFFFFFFF) & 0x81000000 == 0:
                 value = {"EXB Index" : index}
             elif type not in ["float", "vec3f"]:
@@ -2225,9 +2225,9 @@ class ASB:
         with open(os.path.join(output_dir, self.filename + ".json"), 'w', encoding='utf-8') as f:
             json.dump(self.output_dict, f, indent=4, ensure_ascii=False)
 
+def DecompressAsb(filepath, romfs_path):
+    zs = zstd.Zstd(romfs_path)
+    return ASB(zs.Decompress(filepath, no_output=True))
+
 if __name__ == "__main__":
-    file = ASB("Drake.root.asb")
-
-    file.ToJson()
-
-    file.ToBytes("output")
+    pass
