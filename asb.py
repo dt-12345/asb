@@ -439,7 +439,7 @@ class ASB:
         event["Name"] = self.string_pool.read_string(self.stream.read_u32())
         event["Unknown 1"] = self.stream.read_u32()
         offset = self.stream.read_u32()
-        event["Unknown 2"] = self.stream.read_u32()
+        param_size = self.stream.read_u32()
         event["Unknown Hash"] = hex(self.stream.read_u32())
         event["Start Frame"] = self.stream.read_f32()
         pos = self.stream.tell()
@@ -453,7 +453,7 @@ class ASB:
         event["Name"] = self.string_pool.read_string(self.stream.read_u32())
         event["Unknown 1"] = self.stream.read_u32()
         offset = self.stream.read_u32()
-        event["Unknown 2"] = self.stream.read_u32()
+        param_size = self.stream.read_u32()
         event["Unknown Hash"] = hex(self.stream.read_u32())
         event["Start Frame"] = self.stream.read_f32()
         event["End Frame"] = self.stream.read_f32()
@@ -1998,7 +1998,7 @@ class ASB:
                     buffer.write(u32(trigger["Unknown 1"]))
                     buffer.write(u32(offset))
                     offset += 4 + 4 * len(trigger["Parameters"])
-                    buffer.write(u32(trigger["Unknown 2"]))
+                    buffer.write(u32(8 * len(trigger["Parameters"])))
                     buffer.write(u32(int(trigger["Unknown Hash"], 16)))
                     buffer.write(f32(trigger["Start Frame"]))
                 for hold in event["Hold Events"]:
@@ -2007,7 +2007,7 @@ class ASB:
                     buffer.write(u32(hold["Unknown 1"]))
                     buffer.write(u32(offset))
                     offset += 4 + 4 * len(hold["Parameters"])
-                    buffer.write(u32(hold["Unknown 2"]))
+                    buffer.write(u32(8 * len(hold["Parameters"])))
                     buffer.write(u32(int(hold["Unknown Hash"], 16)))
                     buffer.write(f32(hold["Start Frame"]))
                     buffer.write(f32(hold["End Frame"]))
@@ -2222,6 +2222,7 @@ class ASB:
             buffer.write(u32(len(buffer._strings)))
     
     def ToJson(self, output_dir=''):
+        os.makedirs(output_dir, exist_ok=True)
         with open(os.path.join(output_dir, self.filename + ".json"), 'w', encoding='utf-8') as f:
             json.dump(self.output_dict, f, indent=4, ensure_ascii=False)
 
@@ -2230,4 +2231,6 @@ def DecompressAsb(filepath, romfs_path):
     return ASB(zs.Decompress(filepath, no_output=True))
 
 if __name__ == "__main__":
-    pass
+    file = ASB("Lynel.root.json")
+
+    file.ToBytes("output")
