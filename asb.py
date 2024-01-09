@@ -6,6 +6,8 @@ import json
 import os
 import mmh3
 
+# Reserialization does not support version 0x40F
+
 class NodeType(Enum):
     FloatSelector           = 1
     StringSelector          = 2
@@ -57,10 +59,10 @@ class ASB:
 
             # Header (0x74 Bytes)
             self.magic = self.stream.read(4).decode('utf-8')
-            if self.magic != "ASB ": # Must be .ainb file with correct magic
+            if self.magic != "ASB ": # Must be .asb file with correct magic
                 raise Exception(f"Invalid magic {self.magic} - expected 'ASB '")
             self.version = self.stream.read_u32()
-            if self.version not in [0x417, 0x40F]: # Must be version 4.17
+            if self.version not in [0x417, 0x40F]: # Must be version 0x417 or 0x40F
                 raise Exception(f"Invalid version {hex(self.version)} - expected 0x417 or 0x40F")
             
             self.filename_offset = self.stream.read_u32()
@@ -281,6 +283,7 @@ class ASB:
                     else:
                         value = {"Flags" : hex(flag), "Index" : index}
                 else:
+                    # usually means it's a 0x40 section index and the value is then calculated from other parameters
                     value = {"Flags" : hex(flag), "Index" : index}
             if type == "string":
                 v = self.string_pool.read_string(self.stream.read_u32())
@@ -404,7 +407,7 @@ class ASB:
                 command["Tags"] = self.TagGroup()
                 self.stream.seek(pos)
         # I have no idea if these three are correct
-        command["Unknown 1"] = self.ParseParameter("float") # some type of start/end frame
+        command["Unknown 1"] = self.ParseParameter("float") # some type of keyframe
         command["Unknown 2"] = self.ParseParameter("int")
         command["Unknown 3"] = self.stream.read_u32()
         command["GUID"] = self.GUID()
@@ -419,7 +422,7 @@ class ASB:
         for i in range(count):
             offsets.append(self.stream.read_u32())
         for offset in offsets:
-            flag = (offset & 0xFF000000) >> 24
+            flag = (offset & 0xFF000000) >> 24 # top byte is the data type
             offset = offset & 0xFFFFFF
             self.stream.seek(offset)
             if flag == 0x40:
@@ -431,7 +434,7 @@ class ASB:
             elif flag == 0x10:
                 values.append(self.ParseParameter("bool"))
             else:
-                raise ValueError(hex(flag), hex(offset))
+                raise ValueError(hex(flag), hex(offset)) # there might be a vec3f one but I haven't seen it before
         return values
 
     def TriggerEvent(self):
@@ -439,7 +442,7 @@ class ASB:
         event["Name"] = self.string_pool.read_string(self.stream.read_u32())
         event["Unknown 1"] = self.stream.read_u32()
         offset = self.stream.read_u32()
-        param_size = self.stream.read_u32()
+        param_size = self.stream.read_u32() # total size in bytes of all the parameter entries
         event["Unknown Hash"] = hex(self.stream.read_u32())
         event["Start Frame"] = self.stream.read_f32()
         pos = self.stream.tell()
@@ -476,7 +479,8 @@ class ASB:
             event["Hold Events"].append(self.HoldEvent())
         self.stream.seek(pos)
         return event
-    
+
+    # Honestly have no idea what this section is for
     def X38(self):
         entry = {}
         entry["Type"] = self.stream.read_u32()
@@ -502,6 +506,7 @@ class ASB:
         self.stream.seek(pos)
         return entry
     
+    # Seems to be some type of calculation preset?
     def X40(self):
         entry = {}
         # Don't take anything here as fact, these are complete guesses
@@ -511,11 +516,12 @@ class ASB:
             entry["Type"] = self.stream.read_u32() # Except this is definitely a type
         entry["Unknown 2"] = self.stream.read_f32()
         entry["Rate"] = self.stream.read_f32()
-        entry["Unknown 3"] = self.stream.read_f32() # Appears to be written to at runtime
-        entry["Min"] = self.stream.read_f32() # Minimum angle or something?
-        entry["Max"] = self.stream.read_f32() # Maximum angle or something?
+        entry["Unknown 3"] = self.stream.read_f32() # Base value for calculations
+        entry["Min"] = self.stream.read_f32() # Minimum value or something?
+        entry["Max"] = self.stream.read_f32() # Maximum value or something?
         return entry
 
+    # Bone groups for animation blending
     def BoneGroup(self):
         entry = {}
         offset = self.stream.read_u32()
@@ -528,11 +534,12 @@ class ASB:
         for i in range(count):
             bone = {}
             bone["Name"] = self.string_pool.read_string(self.stream.read_u32())
-            bone["Unknown"] = self.stream.read_f32()
+            bone["Unknown"] = self.stream.read_f32() # weight or something? idk anything about animation blending though
             entry["Bones"].append(bone)
         self.stream.seek(pos)
         return entry
-    
+
+    # Command groups for transitions
     def CommandGroup(self):
         entry = []
         offset = self.stream.read_u32()
@@ -543,7 +550,8 @@ class ASB:
             entry.append(self.string_pool.read_string(self.stream.read_u32()))
         self.stream.seek(pos)
         return entry
-    
+
+    # idk if transition is the best term here, but these do update their specified parameter at the corresponding cmd transition
     def TransitionEntry(self):
         entry = {}
         types = {
@@ -584,16 +592,18 @@ class ASB:
         return entry
 
     def ASMarking(self):
-        return [self.string_pool.read_string(self.stream.read_u32()),
-                 self.string_pool.read_string(self.stream.read_u32()),
-                 self.string_pool.read_string(self.stream.read_u32())]
-    
+        return [self.string_pool.read_string(self.stream.read_u32()), # "ASMarking"
+                 self.string_pool.read_string(self.stream.read_u32()), # "ASマーキング" (same thing but in jp)
+                 self.string_pool.read_string(self.stream.read_u32())] # marking name
+
     def X68(self):
         entry = {}
         entry["Name"] = self.string_pool.read_string(self.stream.read_u32())
         entry["Unknown"] = self.stream.read_f32()
         return entry
     
+    # Only used in version 0x40F even though it's present in 0x417
+    # 0x417 enum values are listed in the string pool but are never used
     def EnumResolve(self):
         entry = {}
         offset = self.stream.read_u32()
@@ -621,6 +631,7 @@ class ASB:
             entry["Unknown 2"] = self.ParseParameter("string")
         return entry
 
+    # Might be used as a way for two nodes to share certain values with each other?
     def X2C(self):
         entry = {}
         entry["Source Node"] = self.stream.read_u16()
@@ -732,7 +743,7 @@ class ASB:
         offsets = {"State" : [], "Unk" : [], "Child" : [], "0x2c" : [], "Event" : [], "Frame" : []}
         # This type is used by State nodes but I haven't seen any these nodes used ever
         state_count = self.stream.read_u8()
-        state_index = self.stream.read_u8()
+        state_index = self.stream.read_u8() # base index, same goes for the other types
         # Appear to be unused as far as I can tell
         unknown_count = self.stream.read_u8()
         unknown_index = self.stream.read_u8()
@@ -775,7 +786,7 @@ class ASB:
                     entry["Node Index"] = self.stream.read_u32()
                     x2c.append(entry)
                 else:
-                    x2c.append(self.stream.read_u32())
+                    x2c.append(self.stream.read_u32()) # 0x40F only has the node index
         event = []
         if offsets["Event"]:
             for offset in offsets["Event"]:
@@ -988,7 +999,7 @@ class ASB:
     def EventNode(self):
         entry = {}
         index = self.stream.read_u32()
-        entry["Event"] = self.events[index]
+        entry["Event"] = self.events[index] # literally a scam
         offsets, x2c, event, frame, state = self.NodeConnections()
         if offsets["Child"]:
             entry["Child Nodes"] = []
@@ -1271,6 +1282,7 @@ class ASB:
             entry["Frame Node Connections"] = frame
         return entry
 
+    # I think this is for debugging purposes, I don't think these nodes are ever reached despite being present
     def Alert(self):
         entry = {}
         entry["Message"] = self.ParseParameter("string")
@@ -1466,8 +1478,9 @@ class ASB:
                         buffer.write(f32(v))
             else:
                 buffer.write(u32(0))
-    
-    def CalcTagOffset(self, body_sizes, event_count, x38, tag_groups, buffer):
+
+    # Let's just do this all now so we don't have to jump back and fill in the offsets later
+    def CalcOffsets(self, body_sizes, event_count, x38, tag_groups, buffer):
         offsets = {}
         offset = 0x6C if self.version == 0x417 else 0x68
         offset += (0x30 if self.version == 0x417 else 0x2C) * len(self.commands)
@@ -1683,9 +1696,10 @@ class ASB:
         if "Frame Node Connections" in node_body:
             for entry in node_body["Frame Node Connections"]:
                 buffer.write(u32(entry))
-        
 
     def ToBytes(self, output_dir=''):
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
         with open(os.path.join(output_dir, self.filename + ".asb"), 'wb') as f:
             buffer = WriteStream(f)
             buffer.write("ASB ".encode())
@@ -1727,7 +1741,7 @@ class ASB:
             for tag in body_tags:
                 if tag not in tag_groups:
                     tag_groups.append(tag)
-            offsets, tag_map, event_offsets = self.CalcTagOffset(body_sizes, event_count, x38, tag_groups, buffer)
+            offsets, tag_map, event_offsets = self.CalcOffsets(body_sizes, event_count, x38, tag_groups, buffer)
             buffer.write(u32(offsets["Local Blackboard"]))
             buffer.write(u32(offsets["Strings"]))
             buffer.write(u32(offsets["Enum"]))
@@ -2222,15 +2236,26 @@ class ASB:
             buffer.write(u32(len(buffer._strings)))
     
     def ToJson(self, output_dir=''):
-        os.makedirs(output_dir, exist_ok=True)
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
         with open(os.path.join(output_dir, self.filename + ".json"), 'w', encoding='utf-8') as f:
             json.dump(self.output_dict, f, indent=4, ensure_ascii=False)
 
-def DecompressAsb(filepath, romfs_path):
+def asb_from_zs(filepath, romfs_path=''):
     zs = zstd.Zstd(romfs_path)
     return ASB(zs.Decompress(filepath, no_output=True))
 
-if __name__ == "__main__":
-    file = ASB("Lynel.root.json")
+def asb_to_json(asb_path, output_dir='', romfs_path=''):
+    if os.path.splitext(asb_path)[1] in ['.zs', '.zstd']:
+        file = asb_from_zs(asb_path, romfs_path)
+    else:
+        file = ASB(asb_path)
+    file.ToJson(output_dir)
 
-    file.ToBytes("output")
+def json_to_asb(json_path, output_dir='', compress=False, romfs_path=''):
+    file = ASB(json_path)
+    file.ToBytes(output_dir)
+    if compress:
+        zs = zstd.Zstd(romfs_path)
+        zs.Compress(os.path.join(output_dir, file.filename + ".asb"), output_dir)
+        os.remove(os.path.join(output_dir, file.filename + ".asb"))
