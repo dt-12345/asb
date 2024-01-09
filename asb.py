@@ -648,8 +648,8 @@ class ASB:
         entry = {}
         count = self.stream.read_u16()
         entry["Unknown"] = self.stream.read_u16()
-        entry["Name 1"] = self.string_pool.read_string(self.stream.read_u32())
-        entry["Name 2"] = self.string_pool.read_string(self.stream.read_u32())
+        entry["Partial 1"] = self.string_pool.read_string(self.stream.read_u32())
+        entry["Partial 2"] = self.string_pool.read_string(self.stream.read_u32())
         entry["Entries"] = []
         for i in range(count):
             slot = {}
@@ -2173,10 +2173,10 @@ class ASB:
             for entry in self.slots:
                 buffer.write(u16(len(entry["Entries"])))
                 buffer.write(u16(entry["Unknown"]))
-                buffer.add_string(entry["Name 1"])
-                buffer.add_string(entry["Name 2"])
-                buffer.write(u32(buffer._string_refs[entry["Name 1"]]))
-                buffer.write(u32(buffer._string_refs[entry["Name 2"]]))
+                buffer.add_string(entry["Partial 1"])
+                buffer.add_string(entry["Partial 2"])
+                buffer.write(u32(buffer._string_refs[entry["Partial 1"]]))
+                buffer.write(u32(buffer._string_refs[entry["Partial 2"]]))
                 for slot in entry["Entries"]:
                     buffer.add_string(slot["Bone"])
                     buffer.write(u32(buffer._string_refs[slot["Bone"]]))

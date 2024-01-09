@@ -124,6 +124,7 @@ class EXB:
                     if key == "Instructions":
                         for instruction in entry[key]:
                             self.instructions.append(instruction)
+            self.magic = functions["Info"]["Magic"]
             self.version = functions["Info"]["Version"]
             self.static_size = functions["Info"]["Static Memory Size"]
             self.field_entry_count = functions["Info"]["Instance Count"]
