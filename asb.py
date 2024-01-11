@@ -1018,7 +1018,8 @@ class ASB:
 
     def MaterialAnimation(self):
         entry = {}
-        entry["Unknown 1"] = self.stream.read_u32()
+        if self.version == 0x417:
+            entry["Unknown 1"] = self.stream.read_u32()
         entry["Animation"] = self.ParseParameter("string")
         entry["Unknown 2"] = self.ParseParameter("bool")
         offsets, x2c, event, frame, state = self.NodeConnections()
@@ -1210,7 +1211,8 @@ class ASB:
             self.stream.seek(tag_offset)
             entry["Tags"] = self.TagGroup()
             self.stream.seek(pos)
-        entry["Unknown 1"] = self.ParseParameter("bool")
+        if self.version == 0x417:
+            entry["Unknown 1"] = self.ParseParameter("bool")
         entry["Bone 1"] = self.ParseParameter("string") # Used if flag is 4
         entry["Bone 2"] = self.ParseParameter("string") # Used if flag is 4
         entry["Unknown 2"] = self.stream.read_u32() # Involved in some comparison of the two bones
@@ -1241,7 +1243,8 @@ class ASB:
         entry["Unknown 1"] = self.stream.read_u32()
         entry["Unknown 2"] = self.ParseParameter("float")
         entry["Unknown 3"] = self.stream.read_u32()
-        entry["Unknown 4"] = self.stream.read_u32()
+        if self.version == 0x417:
+            entry["Unknown 4"] = self.stream.read_u32()
         offsets, x2c, event, frame, state = self.NodeConnections()
         if offsets["Child"]:
             entry["Child Nodes"] = []
@@ -1471,7 +1474,7 @@ class ASB:
                 elif type(value["Default Value"]) == str:
                     buffer.add_string(value["Default Value"])
                     buffer.write(u32(buffer._string_refs[value["Default Value"]]))
-                elif type(value) == bool:
+                elif type(value["Default Value"]) == bool:
                     buffer.write(u32(1 if value["Default Value"] else 0))
                 elif type(value["Default Value"]) == list:
                     for v in value["Default Value"]:
@@ -2259,3 +2262,5 @@ def json_to_asb(json_path, output_dir='', compress=False, romfs_path=''):
         zs = zstd.Zstd(romfs_path)
         zs.Compress(os.path.join(output_dir, file.filename + ".asb"), output_dir)
         os.remove(os.path.join(output_dir, file.filename + ".asb"))
+
+json_to_asb("Drake.root.json")

@@ -67,7 +67,7 @@ class EXB:
                 raise ValueError(f"Invalid magic: {self.magic} - expected 'EXB '")
             
             self.version = self.stream.read_u32()
-            if self.version != 0x02:
+            if self.version not in [0x02, 0x01]:
                 raise ValueError(f"Invalid EXB version: {hex(self.version)} - expected 0x2")
             
             self.static_size = self.stream.read_u32()
@@ -112,10 +112,19 @@ class EXB:
             instruction_index = 0
             for command in self.commands:
                 command["Instructions"] = []
-                for i in range(command["Instruction Count"]):
-                    command["Instructions"].append(self.instructions[instruction_index + i])
-                instruction_index += len(command["Instructions"])
-                del command["Instruction Count"] # Remove unnecessary fields from JSON
+                if self.version == 0x02:
+                    for i in range(command["Instruction Count"]):
+                        command["Instructions"].append(self.instructions[instruction_index + i])
+                    instruction_index += len(command["Instructions"])
+                    del command["Instruction Count"] # Remove unnecessary fields from JSON
+                else:
+                    instruction = self.instructions[instruction_index]
+                    while instruction["Type"] != "Terminator":
+                        command["Instructions"].append(instruction)
+                        instruction_index += 1
+                        instruction = self.instructions[instruction_index]
+                    command["Instructions"].append(instruction)
+                    instruction_index += 1
         else:
             self.commands = functions["Commands"]
             self.instructions = []
@@ -146,9 +155,11 @@ class EXB:
     def Info(self):
         info = {}
         info["Base Index Pre-Command Entry"] = self.stream.read_s32()
-        info["Pre-Entry Static Memory Usage"] = self.stream.read_u32()
+        if self.version == 0x02:
+            info["Pre-Entry Static Memory Usage"] = self.stream.read_u32()
         info["Instruction Base Index"] = self.stream.read_u32()
-        info["Instruction Count"] = self.stream.read_u32()
+        if self.version == 0x02:
+            info["Instruction Count"] = self.stream.read_u32()
         info["Static Memory Size"] = self.stream.read_u32()
         info["32-bit Scratch Memory Size"] = self.stream.read_u16()
         info["64-bit Scratch Memory Size"] = self.stream.read_u16()
@@ -156,7 +167,7 @@ class EXB:
         info["Input Data Type"] = Type(self.stream.read_u16()).name
         # We don't need to store these fields
         del info["Output Data Type"], info["Input Data Type"], info["Instruction Base Index"]
-        del info["32-bit Scratch Memory Size"], info["64-bit Scratch Memory Size"], info["Static Memory Size"]
+        del info["Static Memory Size"], info["32-bit Scratch Memory Size"], info["64-bit Scratch Memory Size"]
         return info
     
     def ReadInstruction(self):
