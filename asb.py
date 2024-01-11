@@ -2263,4 +2263,5 @@ def json_to_asb(json_path, output_dir='', compress=False, romfs_path=''):
         zs.Compress(os.path.join(output_dir, file.filename + ".asb"), output_dir)
         os.remove(os.path.join(output_dir, file.filename + ".asb"))
 
-json_to_asb("Drake.root.json")
+if __name__ == "__main__":
+    json_to_asb("Drake.root.json")
