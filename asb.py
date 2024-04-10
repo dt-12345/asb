@@ -1400,7 +1400,7 @@ class ASB:
                 if hash in events:
                     node["BAEV Events"] = events[hash]
                 else:
-                    print(node["Node Index"], hex(hash))
+                    print(f"No BAEV event found for node index {node['Node Index']} (hash: {hash})")
         self.has_asnode_baev = True
 
     # what fun

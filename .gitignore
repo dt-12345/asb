@@ -8,9 +8,9 @@ __pycache__/
 *.baev
 hi.py
 misc.py
-test.py
 notes.txt
 NSS/*
 output/*
 output2/*
 *test*
+romfs.txt

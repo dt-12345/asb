@@ -1,157 +1,59 @@
 try:
-    import zstandard as zs
+    import zstandard as zstd
 except ImportError:
-    raise ImportError("Would you be so kind as to LEARN TO FUCKING READ INSTRUCTIONS")
-import sarc
-import os
-import io
+    raise ImportError("zstandard not found (pip install zstandard)")
+try:
+    import oead
+except ImportError:
+    raise ImportError("oead not found (pip install oead)")
+from functools import lru_cache
+from pathlib import Path
+from typing import Dict, List
 
-class Zstd:
-    # Initialize decompressor
-    def __init__(self, romfs_path, format=zs.FORMAT_ZSTD1): # zs.FORMAT_ZSTD1_MAGICLESS for headerless
-        self.format = format
-        self.decompressor = zs.ZstdDecompressor()
-        with open(os.path.join(romfs_path,"Pack/ZsDic.pack.zs"), 'rb') as file:
-            data = file.read()
-        self.dictionaries = self.decompressor.decompress(data)
-        self.dictionaries = sarc.Sarc(self.dictionaries)
-        self.dictionaries = self.dictionaries.files
+class ZstdDecompressor(zstd.ZstdDecompressor):
+    def __init__(self, dictionary: zstd.ZstdCompressionDict=None, format: int=zstd.FORMAT_ZSTD1) -> None:
+        super().__init__(dict_data=dictionary, format=format)
 
-    # Decompresses specified file to specified location
-    def _DecompressFile(self, filepath, output_dir='', with_dict=False, no_output=False):
-        if with_dict and os.path.basename(filepath) != 'ZsDic.pack.zs':
-            if os.path.splitext(os.path.splitext(filepath)[0])[1] == '.pack':
-                for dic in self.dictionaries:
-                    if dic["Name"] == 'pack.zsdic':
-                        dictionary = dic["Data"]
-                        break
-            elif os.path.splitext(os.path.splitext(filepath)[0])[1] == '.byml':
-                if os.path.splitext(os.path.splitext(os.path.splitext(filepath)[0])[0])[1] == '.bcett':
-                    for dic in self.dictionaries:
-                        if dic["Name"] == 'bcett.byml.zsdic':
-                            dictionary = dic["Data"]
-                            break
-                else:
-                    for dic in self.dictionaries:
-                        if dic["Name"] == 'zs.zsdic':
-                            dictionary = dic["Data"]
-                            break
-            else:
-                for dic in self.dictionaries:
-                    if dic["Name"] == 'zs.zsdic':
-                        dictionary = dic["Data"]
-                        break
-            self.decompressor = zs.ZstdDecompressor(zs.ZstdCompressionDict(dictionary), format=self.format)
-        else:
-            self.decompressor = zs.ZstdDecompressor(format=self.format)
-        with open(filepath, 'rb') as file:
-            data = file.read()
-        if os.path.splitext(filepath)[1] in ['.zs', '.zstd']:
-            filepath = os.path.splitext(filepath)[0]
-        else:
-            return
-        if not(no_output):
-            with open(os.path.join(output_dir, os.path.basename(filepath)), 'wb') as file:
-                file.write(self.decompressor.decompress(data))
-        return self.decompressor.decompress(data)
-
-    # Decompresses a file or directory
-    def Decompress(self, filepath, output_dir='', with_dict=True, no_output=False):
-        if os.path.isfile(filepath):
-            return self._DecompressFile(filepath, output_dir, with_dict, no_output)
-        elif os.path.isdir(filepath):
-            for root_dir, dir, files in os.walk(filepath):
-                for file in files:
-                    if os.path.isfile(os.path.join(root_dir, file)):
-                        rel_path = os.path.relpath(root_dir, filepath)
-                        if not(os.path.exists(os.path.join(output_dir, rel_path))):
-                            os.makedirs(os.path.join(output_dir, rel_path))
-                        return self._DecompressFile(os.path.join(root_dir, file), os.path.join(output_dir, rel_path), with_dict, no_output)
-
-    # Get size of decompressed file
-    def GetDecompressedSize(self, filepath, with_dict=True):
-        with open(filepath, 'rb') as file:
-            if os.path.splitext(filepath)[1] in ['.zs', '.zstd']:
-                if os.path.splitext(filepath)[1] == '.mc':
-                    file.seek(0xc)
-                data = file.read()
-                if with_dict:
-                    if os.path.splitext(os.path.splitext(filepath)[0])[1] == '.pack':
-                        for dic in self.dictionaries:
-                            if dic["Name"] == 'pack.zsdic':
-                                dictionary = dic["Data"]
-                                break
-                    elif os.path.splitext(os.path.splitext(filepath)[0])[1] == '.byml':
-                        if os.path.splitext(os.path.splitext(os.path.splitext(filepath)[0])[0])[1] == '.bcett':
-                            for dic in self.dictionaries:
-                                if dic["Name"] == 'bcett.byml.zsdic':
-                                    dictionary = dic["Data"]
-                                    break
-                        else:
-                            for dic in self.dictionaries:
-                                if dic["Name"] == 'zs.zsdic':
-                                    dictionary = dic["Data"]
-                                    break
-                    else:
-                        for dic in self.dictionaries:
-                            if dic["Name"] == 'zs.zsdic':
-                                dictionary = dic["Data"]
-                                break
-                    self.decompressor = zs.ZstdDecompressor(zs.ZstdCompressionDict(dictionary), format=self.format)
-                else:
-                    self.decompressor = zs.ZstdDecompressor(format=self.format)
-                return len(self.decompressor.decompress(data))
-            else:
-                file.seek(0, io.SEEK_END)
-                return file.tell()
-
-    # Compresses file to specified location
-    def _CompressFile(self, filepath, output_dir='', level=16, with_dict=False):
-        if with_dict and os.path.basename(filepath) != 'ZsDic.pack.zs':
-            if os.path.splitext(os.path.splitext(filepath)[0])[1] == '.pack':
-                for dic in self.dictionaries:
-                    if dic["Name"] == 'pack.zsdic':
-                        dictionary = dic["Data"]
-                        break
-            elif os.path.splitext(os.path.splitext(filepath)[0])[1] == '.byml':
-                if os.path.splitext(os.path.splitext(os.path.splitext(filepath)[0])[0])[1] == '.bcett':
-                    for dic in self.dictionaries:
-                        if dic["Name"] == 'bcett.byml.zsdic':
-                            dictionary = dic["Data"]
-                            break
-                else:
-                    for dic in self.dictionaries:
-                        if dic["Name"] == 'zs.zsdic':
-                            dictionary = dic["Data"]
-                            break
-            else:
-                for dic in self.dictionaries:
-                    if dic["Name"] == 'zs.zsdic':
-                        dictionary = dic["Data"]
-                        break
-            self.compressor = zs.ZstdCompressor(level, zs.ZstdCompressionDict(dictionary))
-        else:
-            self.compressor = zs.ZstdCompressor(level)
-        with open(filepath, 'rb') as file:
-            data = file.read()
-        filepath += '.zs'
-        with open(os.path.join(output_dir, os.path.basename(filepath)), 'wb') as file:
-            if self.format == zs.FORMAT_ZSTD1_MAGICLESS:
-                file.write(self.compressor.compress(data)[4:])
-                return self.compressor.compress(data)[4:]
-            else:
-                file.write(self.compressor.compress(data))
-                return self.compressor.compress(data)
+    def _decompress(self, data: bytes) -> bytes:
+        return self.decompress(data)
     
-    # Compresses file or files and maintains directory structure
-    def Compress(self, filepath, output_dir='', level=16, with_dict=True):
-        if os.path.isfile(filepath):
-            return self._CompressFile(filepath, output_dir, level, with_dict)
-        elif os.path.isdir(filepath):
-            for root_dir, dir, files in os.walk(filepath):
-                for file in files:
-                    if os.path.isfile(os.path.join(root_dir, file)):
-                        rel_path = os.path.relpath(root_dir, filepath)
-                        if not(os.path.exists(os.path.join(output_dir, rel_path))):
-                            os.makedirs(os.path.join(output_dir, rel_path))
-                        return self._CompressFile(os.path.join(root_dir, file), os.path.join(output_dir, rel_path), level, with_dict)
+class ZstdCompressor(zstd.ZstdCompressor):
+    def __init__(self, dictionary: zstd.ZstdCompressionDict=None, format: int=zstd.FORMAT_ZSTD1) -> None:
+        super().__init__(dict_data=dictionary, format=format)
+    
+    def _compress(self, data: bytes) -> bytes:
+        return self.compress(data)
+
+class ZstdDecompContext:
+    @lru_cache
+    def __init__(self, zsdic_pack_path: str="") -> None:
+        vanilla_decompressor: zstd.ZstdDecompressor = zstd.ZstdDecompressor()
+        archive: oead.Sarc = oead.Sarc(vanilla_decompressor.decompress(Path(zsdic_pack_path).read_bytes()))
+        dictionaries: Dict[str, zstd.ZstdCompressionDict] = {f.name: zstd.ZstdCompressionDict(f.data) for f in archive.get_files()}
+        self.pack: ZstdDecompressor = ZstdDecompressor(dictionaries["pack.zsdic"])
+        self.bcett: ZstdDecompressor = ZstdDecompressor(dictionaries["bcett.byml.zsdic"])
+        self.zs: ZstdDecompressor = ZstdDecompressor(dictionaries["zs.zsdic"])
+        self.mc: ZstdDecompressor = ZstdDecompressor(format=zstd.FORMAT_ZSTD1_MAGICLESS)
+        self.pack_compress: ZstdCompressor = ZstdCompressor(dictionaries["pack.zsdic"])
+        self.bcett_compress: ZstdCompressor = ZstdCompressor(dictionaries["bcett.byml.zsdic"])
+        self.zs_compress: ZstdCompressor = ZstdCompressor(dictionaries["zs.zsdic"])
+    
+    def decompress(self, filepath: str) -> bytes:
+        if not(filepath.endswith(".zs") or filepath.endswith(".zstd")):
+            return Path(filepath).read_bytes()
+        if filepath.endswith(".pack.zs"):
+            return self.pack._decompress(Path(filepath).read_bytes())
+        elif filepath.endswith(".bcett.byml.zs"):
+            return self.bcett._decompress(Path(filepath).read_bytes())
+        elif filepath.endswith(".mc"):
+            return self.mc._decompress(Path(filepath).read_bytes())
+        else:
+            return self.zs._decompress(Path(filepath).read_bytes())
+    
+    def compress(self, filepath: str) -> bytes:
+        if filepath.endswith(".pack.zs"):
+            return self.pack_compress._compress(Path(filepath).read_bytes())
+        elif filepath.endswith(".bcett.byml.zs"):
+            return self.bcett_compress._compress(Path(filepath).read_bytes())
+        else:
+            return self.zs_compress._compress(Path(filepath).read_bytes())
