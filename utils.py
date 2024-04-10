@@ -83,6 +83,8 @@ class ReadStream(Stream):
                 ptr = self.read_u32()
             elif size == 2:
                 ptr = self.read_u16()
+            elif size == 8:
+                ptr = self.read_u64()
             else:
                 raise Exception("Please provide relative offset for other data sizes")
         else:
@@ -141,6 +143,12 @@ class WriteStream(Stream):
 
     def write(self, data):
         self.stream.write(data)
+
+    def write_at_offset(self, data, offset):
+        pos = self.stream.tell()
+        self.stream.seek(offset)
+        self.write(data)
+        self.stream.seek(pos)
 
 def u8(value):
     return struct.pack("B", value)

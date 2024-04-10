@@ -1,5 +1,10 @@
+# I should rewrite this but I'm lazy and it works for now
+
 from enum import Enum
-from utils import *
+try:
+    from utils import *
+except ImportError:
+    raise ImportError("utils.py not found")
 
 # Enums and stuff
 class Command(Enum):
