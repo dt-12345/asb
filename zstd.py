@@ -18,8 +18,8 @@ class ZstdDecompressor(zstd.ZstdDecompressor):
         return self.decompress(data)
     
 class ZstdCompressor(zstd.ZstdCompressor):
-    def __init__(self, dictionary: zstd.ZstdCompressionDict=None, format: int=zstd.FORMAT_ZSTD1) -> None:
-        super().__init__(dict_data=dictionary, format=format)
+    def __init__(self, dictionary: zstd.ZstdCompressionDict=None) -> None:
+        super().__init__(dict_data=dictionary)
     
     def _compress(self, data: bytes) -> bytes:
         return self.compress(data)
