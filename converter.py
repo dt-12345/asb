@@ -83,10 +83,10 @@ def baev_to_json(filepath, output_dir="", romfs_path=""):
         with open("romfs.txt", "w", encoding="utf-8") as f:
             f.write(romfs_path)
     if filepath.endswith(".zs") or filepath.endswith(".zstd"):
-        decompress(filepath, romfs_path)
+        data = decompress(filepath, romfs_path)
     else:
         data = Path(filepath).read_bytes()
-    file = BAEV.from_binary(data, os.path.basename(filepath).replace(".baev", ""))
+    file = BAEV.from_binary(data, os.path.basename(filepath).replace(".baev", "").replace(".zs", ""))
     if output_dir != "":
         os.makedirs(output_dir, exist_ok=True)
     file.to_json(output_dir)
