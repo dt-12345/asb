@@ -25,7 +25,7 @@ def decompress(filepath, romfs_path):
     zs = ZstdDecompContext(os.path.join(romfs_path, "Pack/ZsDic.pack.zs"))
     return zs.decompress(filepath)
 
-def compress(filepath, romfs_path):
+def compress(filepath, romfs_path=""):
     if not os.path.exists("romfs.txt"):
         with open("romfs.txt", "w") as f:
             pass
@@ -66,13 +66,13 @@ def json_to_asb(filepath, output_dir="", compress_file=False, romfs_path=""):
         os.makedirs(output_dir, exist_ok=True)
     if compress_file:
         file.to_binary()
-        data = compress(Path(file.filename + ".asb").read_bytes())
-        with open(os.path.join(output_dir, file.filename + ".asb.zs"), "rb") as f:
+        data = compress(file.filename + ".asb", romfs_path)
+        with open(os.path.join(output_dir, file.filename + ".asb.zs"), "wb") as f:
             f.write(data)
         os.remove(file.filename + ".asb")
         if os.path.exists(file.filename + ".baev"):
-            data = compress(Path(file.filename + ".baev").read_bytes())
-            with open(os.path.join(output_dir, file.filename + ".baev.zs"), "rb") as f:
+            data = compress(file.filename + ".baev", romfs_path)
+            with open(os.path.join(output_dir, file.filename + ".baev.zs"), "wb") as f:
                 f.write(data)
             os.remove(file.filename + ".baev")
     else:
@@ -100,8 +100,8 @@ def json_to_baev(filepath, output_dir="", compress_file=False, romfs_path=""):
         os.makedirs(output_dir, exist_ok=True)
     if compress_file:
         file.to_binary()
-        data = compress(Path(file.filename + ".baev").read_bytes())
-        with open(os.path.join(output_dir, file.filename + ".baev.zs"), "rb") as f:
+        data = compress(file.filename + ".baev", romfs_path)
+        with open(os.path.join(output_dir, file.filename + ".baev.zs"), "wb") as f:
             f.write(data)
         os.remove(file.filename + ".baev")
     else:
