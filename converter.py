@@ -13,28 +13,24 @@ except ImportError:
 
 import os
 from pathlib import Path
+from functools import lru_cache
+
+@lru_cache
+def get_ctx(romfs_path):
+    if not os.path.exists("romfs.txt"):
+        with open("romfs.txt", "w") as f:
+            pass
+    if romfs_path == "":
+        romfs_path = Path("romfs.txt").read_text("utf-8")
+        if romfs_path == "":
+            raise ValueError("Please provide a romfs path")
+    return ZstdDecompContext(os.path.join(romfs_path, "Pack/ZsDic.pack.zs"))
 
 def decompress(filepath, romfs_path):
-    if not os.path.exists("romfs.txt"):
-        with open("romfs.txt", "w") as f:
-            pass
-    if romfs_path == "":
-        romfs_path = Path("romfs.txt").read_text("utf-8")
-        if romfs_path == "":
-            raise ValueError("Please provide a romfs path for decompression")
-    zs = ZstdDecompContext(os.path.join(romfs_path, "Pack/ZsDic.pack.zs"))
-    return zs.decompress(filepath)
+    return get_ctx(romfs_path).decompress(filepath)
 
 def compress(filepath, romfs_path=""):
-    if not os.path.exists("romfs.txt"):
-        with open("romfs.txt", "w") as f:
-            pass
-    if romfs_path == "":
-        romfs_path = Path("romfs.txt").read_text("utf-8")
-        if romfs_path == "":
-            raise ValueError("Please provide a romfs path for compression")
-    zs = ZstdDecompContext(os.path.join(romfs_path, "Pack/ZsDic.pack.zs"))
-    return zs.compress(filepath)
+    return get_ctx(romfs_path).compress(filepath)
 
 # the baev file here needs to be a AsNode baev file and not an Animation one
 def asb_to_json(filepath, output_dir="", romfs_path="", baev_path=""):

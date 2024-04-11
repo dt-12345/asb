@@ -5,6 +5,7 @@ __pycache__/
 
 *.asb
 *.root.json
+*.anim.json
 *.baev
 hi.py
 misc.py
