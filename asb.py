@@ -914,8 +914,8 @@ class ASB:
     def OneDimensionalBlender(self):
         entry = {}
         entry["Parameter"] = self.parse_param("float", True) # also holds the select flag
-        # if set to 1, then it does (r^2 * (3.0 - 2r)) to the calculated ratio twice
-        entry["Unknown"] = self.stream.read_u32()
+        # if set to 1, then it does (r^2 * (3.0 - 2r)) to the calculated ratio twice -> this is a cubic smoothstep
+        entry["Lerp Mode"] = self.stream.read_u32()
         offsets, transitions, event, frame, state = self.read_connections()
         if offsets["Child"]:
             entry["Child Nodes"] = []
@@ -1932,7 +1932,7 @@ class ASB:
                         self.write_connections(buffer, body, node["Node Type"])
                     elif node["Node Type"] == "OneDimensionalBlender":
                         self.write_parameter(buffer, body["Parameter"])
-                        buffer.write(u32(body["Unknown"]))
+                        buffer.write(u32(body["Lerp Mode"]))
                         self.write_connections(buffer, body, node["Node Type"])
                     elif node["Node Type"] == "Sequential":
                         self.write_parameter(buffer, body["Use Sync Range Mult"])
