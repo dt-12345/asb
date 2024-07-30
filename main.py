@@ -23,26 +23,26 @@ def open_file(sender, app_data, user_data):
     if user_data == "asbtojson_input":
         dpg.set_value("asbtojson_input", tkinter.filedialog.askopenfilename(
             title = "ASB to JSON input asb file",
-            filetypes = (("idk what asb stands for","*.asb"),("all files","*.*")))
+            filetypes = (("Animation Sequence Binary","*.asb"),("All Files","*.*")))
         )
 
     if user_data == "jsontoasb_input":
         dpg.set_value("jsontoasb_input", tkinter.filedialog.askopenfilename(
             title = "JSON to ASB input file",
-            filetypes = (("JSON stands for JavaScript Object Notation","*.json"),("all files","*.*")))
+            filetypes = (("JavaScript Object Notation","*.json"),("all files","*.*")))
         )
 
     if user_data == "baevtojson_input":
         dpg.set_value("baevtojson_input", tkinter.filedialog.askopenfilename(
             title = "BAEV to JSON input file",
-            filetypes = (("idk what baev stands for","*.baev"),("all files","*.*")))
+            filetypes = (("Binary Animation Event","*.baev"),("all files","*.*")))
         )
 
 
     if user_data == "jsontobaev_input":
         dpg.set_value("jsontobaev_input", tkinter.filedialog.askopenfilename(
             title = "JSON to BAEV input file",
-            filetypes = (("JSON stands for JavaScript Object Notation","*.json"),("all files","*.*")))
+            filetypes = (("JavaScript Object Notation","*.json"),("all files","*.*")))
         )
 
 def conversion_stuff(sender, app_data, user_data):
