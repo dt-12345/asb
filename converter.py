@@ -18,12 +18,11 @@ from functools import lru_cache
 @lru_cache
 def get_ctx(romfs_path):
     if not os.path.exists("romfs.txt"):
-        with open("romfs.txt", "w") as f:
-            pass
+        raise FileNotFoundError("Provide a RomFS path")
     if romfs_path == "":
         romfs_path = Path("romfs.txt").read_text("utf-8")
         if romfs_path == "":
-            raise ValueError("Please provide a romfs path")
+            raise ValueError("Provide a RomFS path")
     return ZstdDecompContext(os.path.join(romfs_path, "Pack/ZsDic.pack.zs"))
 
 def decompress(filepath, romfs_path):
