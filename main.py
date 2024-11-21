@@ -50,7 +50,7 @@ def conversion_stuff(sender, app_data, user_data):
         if user_data == "asbtojson":
             converter.asb_to_json(dpg.get_value("asbtojson_input"), dpg.get_value("asbtojson_output"))
         if user_data == "jsontoasb":
-            converter.json_to_baev(dpg.get_value("jsontoasb_input"), dpg.get_value("jsontoasb_output"))
+            converter.json_to_asb(dpg.get_value("jsontoasb_input"), dpg.get_value("jsontoasb_output"))
         if user_data == "baevtojson":
             converter.baev_to_json(dpg.get_value("baevtojson_input"))
         if user_data == "jsontobaev":

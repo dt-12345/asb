@@ -293,12 +293,23 @@ class BAEV:
             buffer.write(b'\x00\x00\x01\x00') # version
             buffer.write(u32(0)) # padding
             buffer.write(u64(offsets["String"])) # string pool offset
-            buffer.write(u64(offsets["HashHeader"]))
-            buffer.write(u32(len(self.events)))
-            buffer.write(u32(0x18)) # element size
-            buffer.write(u64(offsets["Nodes"]))
-            buffer.write(u32(count))
-            buffer.write(u32(0x18))
+            if (len(self.events) == 0):
+                buffer.write(u64(0))
+                buffer.write(u32(0))
+                buffer.write(u32(0))
+            else:
+                buffer.write(u64(offsets["HashHeader"]))
+                buffer.write(u32(len(self.events)))
+                buffer.write(u32(0x18)) # element size
+                
+            if (count == 0):
+                buffer.write(u64(0))
+                buffer.write(u32(0))
+                buffer.write(u32(0))
+            else:
+                buffer.write(u64(offsets["Nodes"]))
+                buffer.write(u32(count))
+                buffer.write(u32(0x18))
             offset = offsets["Indices"]
             sorted_events = dict(sorted(self.events.items()))
             for entry in sorted_events:
@@ -349,7 +360,7 @@ class BAEV:
                     else:
                         buffer.write(u64(0))
                         buffer.write(u32(0))
-                        buffer.write(u32(0x18))
+                        buffer.write(u32(0))
                     if "Hold Array" in node["Event"][event]:
                         buffer.write(u64(offset))
                         buffer.write(u32(len(node["Event"][event]["Hold Array"])))
@@ -358,7 +369,7 @@ class BAEV:
                     else:
                         buffer.write(u64(0))
                         buffer.write(u32(0))
-                        buffer.write(u32(0x18))
+                        buffer.write(u32(0))
                     buffer.write(u32(1 if "Hold Array" in node["Event"][event] else 0))
                     if "Trigger Array" in node["Event"][event]:
                         buffer.write(u32(self.event_list["Trigger"].index(event)))
